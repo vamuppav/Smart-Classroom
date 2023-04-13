@@ -1,0 +1,158 @@
+#include <LiquidCrystal.h>
+#include <SoftwareSerial.h>
+
+#define button 2
+
+SoftwareSerial esp(3, 4);
+LiquidCrystal lcd(8, 9, 10, 11, 12, 13);
+
+int count,check;         
+String c1="21001FF65199";
+String c2="2000F5CB8B95";
+String c3="2000F62EE21A";
+char input[12];
+String rfid;
+          
+String ssid = "class";
+String password = "class123";
+
+void setup()
+{
+  esp.begin(9600);
+  pinMode(button,INPUT_PULLUP);
+  lcd.begin(16, 2);
+  lcd.setCursor(0, 0);
+  lcd.print("Class Room");
+  lcd.setCursor(0, 1);
+  lcd.print("Scheduling");
+  delay(2000);
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Connecting Wi-Fi"); 
+  if(connectwifi())
+  {
+    lcd.setCursor(0,1);
+    lcd.print("Connected");
+    delay(2000);
+  }
+}
+
+void loop()
+{ 
+  int std1,std2,std3;
+  std1=std2=std3=0;  
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Faculty Need to");
+  lcd.setCursor(0,1);
+  lcd.print("Accessed");
+  while(digitalRead(button)==1);
+  check=1;
+  delay(500);
+  while(check==1)
+  {
+    lcd.clear();
+    lcd.home();
+    lcd.print("Swipe ur card");
+    if(digitalRead(button)==0)
+    check=0;
+    while(Serial.available() && count < 12)          
+    {
+      input[count]=Serial.read();
+      count++;
+      delay(5);
+      if (count==12)
+      {
+        count = 0;
+        rfid=input;
+      }
+    }
+    if(c1.equals(rfid))
+    {
+      std1 = 1;
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Student 1");
+      lcd.setCursor(0, 1);
+      lcd.print("Swiped");
+      rfid.remove(0);
+      delay(1000);
+    }
+    else  if(c2.equals(rfid))
+    {
+      std2 = 1;
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Student 2");
+      lcd.setCursor(0, 1);
+      lcd.print("Swiped");
+      rfid.remove(0);
+      delay(1000);
+    }
+    else if(c3.equals(rfid))
+    {
+      std3 = 1;
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Student 3");
+      lcd.setCursor(0, 1);
+      lcd.print("Swiped");
+      rfid.remove(0);
+      delay(1000);
+    }
+    delay(1000);
+  }
+  
+  lcd.clear();
+  lcd.home();
+  lcd.print("Update in server");
+  delay(200);
+  post(String(std1),String(std2),String(std3));
+  delay(1000);
+  
+}        
+
+void post(String val1, String val2, String val3)
+{
+  String server = "www.ctcorphyd.com";  
+  String cmd = "AT+CIPSTART=\"TCP\",\"";
+  cmd += server; 
+  cmd += "\",80";
+  esp.println(cmd);
+  delay(500);
+  String uri;
+  uri ="/CRSchedule/iot.php?a="; 
+  uri += val1; 
+  uri +="&b="; 
+  uri += val2; 
+  uri +="&c=";
+  uri +=val3;
+  uri +="&d=1";
+  String getStr = "GET " + uri + " HTTP/1.0\r\n" + "Host: " + server + "\r\n" + "Connection: close\r\n\r\n";
+  
+  String str = "AT+CIPSEND=";
+  str += String(getStr.length());
+  esp.println(str);
+  delay(100);
+  if(esp.find(">"))  
+  {
+    esp.println(getStr);
+  }
+  delay(1000);
+}
+
+
+int connectwifi()
+{
+  String cmd ="AT+CWJAP=\"" + ssid + "\",\"" + password + "\"";
+  esp.println(cmd);
+  delay(5000);
+  if(esp.find("OK"))
+  {
+    return 1;
+  }
+  else
+  {
+    connectwifi();  
+   }
+}
